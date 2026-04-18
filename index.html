@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>K1 English Playground</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            overflow: hidden;
+        }
+
+        /* Shared UI Effects */
+        .btn-3d { transition: all 0.1s; box-shadow: 0 6px 0px rgba(0,0,0,0.2); }
+        .btn-3d:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0px 0px rgba(0,0,0,0.2); }
+        .btn-3d:disabled { opacity: 0.5; transform: translateY(6px); box-shadow: 0 0px 0px rgba(0,0,0,0.2); cursor: not-allowed; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px) rotate(-5deg); }
+            40%, 80% { transform: translateX(10px) rotate(5deg); }
+        }
+        .animate-shake { animation: shake 0.5s ease-in-out; }
+
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-150px) scale(1.5) rotate(90deg); opacity: 0; }
+        }
+        .star-particle { position: absolute; font-size: 3rem; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 100; }
+
+        /* Game 1: Racing */
+        .bg-racing { background-color: #f0f9ff; background-image: radial-gradient(#bae6fd 2px, transparent 2px); background-size: 30px 30px; }
+        .race-track { background-color: #4b5563; border-top: 8px solid #9ca3af; border-bottom: 8px solid #9ca3af; box-shadow: inset 0 10px 20px rgba(0,0,0,0.2); }
+        .track-dashed-line { background: repeating-linear-gradient(90deg, #fff, #fff 30px, transparent 30px, transparent 60px); height: 6px; width: 100%; }
+        .start-line { background: repeating-linear-gradient(45deg, #000 25%, #fff 25%, #fff 50%, #000 50%, #000 75%, #fff 75%, #fff 100%); background-size: 20px 20px; width: 16px; }
+        .finish-line { background: repeating-conic-gradient(#000 0% 25%, #fff 0% 50%) 50% / 20px 20px; width: 32px; }
+        @keyframes carSpin { 0% { transform: rotate(0deg) scale-x(-1) scale(1); } 50% { transform: rotate(180deg) scale-x(-1) scale(1.2); } 100% { transform: rotate(360deg) scale-x(-1) scale(1); } }
+        .animate-car-spin { animation: carSpin 0.6s ease-in-out; }
+        .r-card-selected { border-color: #fbbf24 !important; background-color: #fef3c7 !important; color: #d97706 !important; transform: translateY(4px); box-shadow: 0 2px 0px rgba(0,0,0,0.2); }
+
+        /* Game 2: Supermarket */
+        .bg-supermarket { background-color: #fffbeb; background-image: linear-gradient(90deg, transparent 79px, #fde68a 79px, #fde68a 81px, transparent 81px), linear-gradient(#eee 1px, transparent 1px); background-size: 80px 80px; }
+        .falling-item { position: absolute; transition: transform 0.1s linear; will-change: transform; display: flex; align-items: center; justify-content: center; }
+        @keyframes catchPop { 0% { transform: scale(1); } 50% { transform: scale(1.5); opacity: 0.8; } 100% { transform: scale(0); opacity: 0; } }
+        .animate-catch { animation: catchPop 0.4s ease-out forwards; }
+        @keyframes bounceAway { 0% { transform: translate(0, 0) rotate(0deg); } 100% { transform: translate(100px, -100px) rotate(180deg) scale(0); opacity: 0; } }
+        .animate-bounce-away { animation: bounceAway 0.5s ease-in forwards; }
+        @keyframes checkMark { 0% { transform: scale(0); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        .animate-check { animation: checkMark 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        /* Game 3: Kitchen */
+        .bg-kitchen { background-color: #fff1f2; background-image: radial-gradient(#fecdd3 2px, transparent 2px); background-size: 30px 30px; }
+        @keyframes dropIntoPot { 0% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; } 50% { transform: scale(1.5) translateY(-50px) rotate(15deg); opacity: 1; } 100% { transform: scale(0.2) translateY(150px) rotate(90deg); opacity: 0; } }
+        .animate-drop { animation: dropIntoPot 0.8s ease-in forwards; pointer-events: none; z-index: 50; position: absolute; }
+        @keyframes boiling { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-5px) scale(1.02); } }
+        .animate-boil { animation: boiling 2s infinite ease-in-out; }
+        .word-slot { display: inline-block; min-width: 2rem; border-bottom: 4px solid #f59e0b; margin: 0 4px; text-align: center; height: 3.5rem; line-height: 3.5rem; color: #e5e7eb; }
+        .word-slot.filled { border-bottom: 4px solid transparent; color: #d97706; }
+    </style>
+</head>
+<body class="w-screen h-screen">
+
+    <!-- 🌟 Main Hub 🌟 -->
+    <div id="hub-screen" class="fixed inset-0 bg-slate-50 flex flex-col items-center justify-center p-4 z-50">
+        <h1 class="text-5xl md:text-7xl font-black text-indigo-600 mb-2 text-center drop-shadow-md">
+            K1 English Playground 🎠
+        </h1>
+        <p class="text-xl md:text-2xl text-gray-500 font-bold mb-8 text-center">Choose a game to play!</p>
+        
+        <div class="flex flex-col md:flex-row gap-6 w-full max-w-5xl justify-center items-stretch">
+            <!-- Game 1: Racing -->
+            <button onclick="openApp('racing')" class="flex-1 btn-3d bg-blue-400 border-4 border-blue-500 hover:bg-blue-300 rounded-[2rem] p-6 flex flex-col items-center justify-center gap-4">
+                <span class="text-7xl md:text-8xl drop-shadow-lg transform scale-x-[-1]">🏎️</span>
+                <span class="text-white text-3xl font-black drop-shadow-md">Racing Match</span>
+            </button>
+            
+            <!-- Game 2: Supermarket -->
+            <button onclick="openApp('supermarket')" class="flex-1 btn-3d bg-orange-400 border-4 border-orange-500 hover:bg-orange-300 rounded-[2rem] p-6 flex flex-col items-center justify-center gap-4">
+                <span class="text-7xl md:text-8xl drop-shadow-lg">🛒</span>
+                <span class="text-white text-3xl font-black drop-shadow-md">Supermarket Catch</span>
+            </button>
+            
+            <!-- Game 3: Kitchen -->
+            <button onclick="openApp('kitchen')" class="flex-1 btn-3d bg-rose-400 border-4 border-rose-500 hover:bg-rose-300 rounded-[2rem] p-6 flex flex-col items-center justify-center gap-4">
+                <span class="text-7xl md:text-8xl drop-shadow-lg animate-boil">👩‍🍳</span>
+                <span class="text-white text-3xl font-black drop-shadow-md">Kitchen Spelling</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 🏎️ Game 1: Racing Match 🏎️ -->
+    <!-- ========================================== -->
+    <div id="app-racing" class="fixed inset-0 bg-racing hidden z-40 flex flex-col relative">
+        
+        <!-- R_Menu -->
+        <div id="r-menu-screen" class="absolute inset-0 flex flex-col items-center justify-center p-4 z-20 bg-racing">
+            <button onclick="backToHub()" class="absolute top-4 left-4 btn-3d bg-gray-400 text-white font-bold py-2 px-4 rounded-xl border-b-4 border-gray-500">🏠 Home</button>
+            <h1 class="text-5xl md:text-6xl font-black text-blue-600 mb-4 text-center drop-shadow-md">🏁 Racing Match</h1>
+            <div class="bg-white p-6 rounded-3xl w-full max-w-2xl border-4 border-blue-200 shadow-sm mb-6 text-center">
+                <p class="text-lg text-gray-500 font-bold mb-2">✅ Match the uppercase and lowercase letters!</p>
+                <p class="text-lg text-gray-500 font-bold">✅ Don't run out of fuel!</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                <button onclick="R_startGame(0)" class="btn-3d bg-pink-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-pink-500">A - E</button>
+                <button onclick="R_startGame(1)" class="btn-3d bg-orange-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-orange-500">F - J</button>
+                <button onclick="R_startGame(2)" class="btn-3d bg-green-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-green-500">K - O</button>
+                <button onclick="R_startGame(3)" class="btn-3d bg-blue-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-blue-500">P - T</button>
+                <button onclick="R_startGame(4)" class="btn-3d bg-purple-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-purple-500 md:col-span-2">U - Z</button>
+            </div>
+        </div>
+
+        <!-- R_Game -->
+        <div id="r-game-screen" class="w-full max-w-4xl mx-auto p-4 hidden flex-col flex-1 relative mt-2 md:mt-6">
+            <div class="w-full flex justify-between items-center mb-4 gap-2">
+                <button onclick="R_showMenu()" class="btn-3d bg-gray-400 text-white text-sm md:text-lg font-bold py-2 px-3 rounded-xl border-b-4 border-gray-500 z-20">Menu</button>
+                <!-- Fuel Bar -->
+                <div id="r-fuel-bar" class="flex gap-1 flex-1 justify-center z-10 px-1"></div>
+                <div class="flex gap-2 z-20">
+                    <div id="r-stage-display" class="text-sm md:text-xl font-black text-blue-500 bg-white py-1 px-3 rounded-full border-4 border-blue-200">Stage 1/3</div>
+                </div>
+            </div>
+            
+            <div class="race-track rounded-2xl w-full h-32 md:h-44 relative mb-6 flex items-center overflow-hidden">
+                <div class="track-dashed-line absolute top-1/2 -translate-y-1/2"></div>
+                <div class="start-line absolute left-4 md:left-8 top-0 bottom-0"></div>
+                <div class="finish-line absolute right-4 md:right-8 top-0 bottom-0"></div>
+                <div id="r-car-container" class="absolute left-[8%] top-1/2 -translate-y-1/2 transition-all duration-700 ease-in-out flex flex-col items-center">
+                    <div id="r-car-letters" class="hidden absolute -top-8 bg-white border-2 border-yellow-400 rounded-full px-2 py-1 font-black text-lg text-blue-600 whitespace-nowrap"><span id="r-L1">A</span> <span id="r-L2">a</span></div>
+                    <div id="r-car-sprite" class="text-6xl md:text-7xl drop-shadow-xl transform scale-x-[-1]">🏎️</div>
+                </div>
+            </div>
+            
+            <div id="r-options" class="flex flex-wrap justify-center gap-3 w-full"></div>
+        </div>
+
+        <!-- R_LevelUp -->
+        <div id="r-levelup-screen" class="absolute inset-0 bg-blue-500 bg-opacity-95 hidden flex-col items-center justify-center z-50">
+            <div id="r-levelup-box" class="bg-white p-8 rounded-[3rem] border-8 border-yellow-400 flex flex-col items-center transform scale-0 transition-transform">
+                <h2 id="r-lu-title" class="text-5xl md:text-7xl font-black text-orange-500 mb-4 animate-bounce">CLEAR!</h2>
+                <div id="r-lu-stars" class="flex gap-4 mb-4 text-6xl">🌟🌟🌟</div>
+                <p id="r-lu-msg" class="text-2xl font-bold text-gray-600 text-center mb-6">Amazing!</p>
+                <button id="r-lu-btn" onclick="R_showMenu()" class="hidden btn-3d bg-green-400 text-white text-3xl font-black py-3 px-8 rounded-3xl border-4 border-green-500">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 🛒 Game 2: Supermarket Catch 🛒 -->
+    <!-- ========================================== -->
+    <div id="app-supermarket" class="fixed inset-0 bg-supermarket hidden z-40 flex flex-col relative">
+        
+        <!-- S_Menu -->
+        <div id="s-menu-screen" class="absolute inset-0 flex flex-col items-center justify-center p-4 z-20 bg-supermarket">
+            <button onclick="backToHub()" class="absolute top-4 left-4 btn-3d bg-gray-400 text-white font-bold py-2 px-4 rounded-xl border-b-4 border-gray-500">🏠 Home</button>
+            <h1 class="text-5xl md:text-6xl font-black text-orange-500 mb-4 text-center drop-shadow-md">🛒 Supermarket Catch</h1>
+            <div class="bg-white p-6 rounded-3xl w-full max-w-2xl border-4 border-orange-300 shadow-sm mb-6 text-center">
+                <p class="text-lg text-gray-500 font-bold mb-2">✅ Slide the cart to catch the letters!</p>
+                <p class="text-lg text-gray-500 font-bold">✅ Catch 5 letters to clear the stage!</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                <button onclick="S_startGame(0)" class="btn-3d bg-pink-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-pink-500">A - E</button>
+                <button onclick="S_startGame(1)" class="btn-3d bg-orange-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-orange-500">F - J</button>
+                <button onclick="S_startGame(2)" class="btn-3d bg-green-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-green-500">K - O</button>
+                <button onclick="S_startGame(3)" class="btn-3d bg-blue-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-blue-500">P - T</button>
+                <button onclick="S_startGame(4)" class="btn-3d bg-purple-400 text-white text-3xl font-black py-4 rounded-3xl border-4 border-purple-500 md:col-span-2">U - Z</button>
+            </div>
+        </div>
+
+        <!-- S_Game -->
+        <div id="s-game-screen" class="w-full h-full hidden flex-col flex-1 relative">
+            <div class="w-full bg-white border-b-4 border-orange-200 p-2 z-10 shadow-sm flex flex-col items-center">
+                <div class="flex w-full justify-between items-center mb-1">
+                    <button onclick="S_showMenu()" class="btn-3d bg-gray-400 text-white font-bold py-1 px-3 rounded-xl border-b-4 border-gray-500">Menu</button>
+                    <div id="s-stage-display" class="font-black text-blue-500 bg-blue-100 px-3 py-1 rounded-full border-2 border-blue-300 absolute left-1/2 -translate-x-1/2">Stage 1/5</div>
+                    <div class="w-16"></div>
+                </div>
+                <div class="flex flex-col items-center mt-1">
+                    <div class="text-3xl font-black text-orange-600 mb-1 flex items-center gap-2 bg-yellow-50 px-4 py-1 rounded-2xl border-2 border-yellow-200">
+                        <span id="s-target-upper">A</span><span id="s-target-lower" class="text-2xl">a</span><span id="s-target-emoji" class="text-4xl">🍎</span>
+                    </div>
+                    <div id="s-progress" class="flex justify-center gap-1"></div>
+                </div>
+            </div>
+
+            <div id="s-play-area" class="flex-1 relative overflow-hidden" style="touch-action: none;">
+                <div id="s-cart" class="absolute bottom-4 w-24 h-24 md:w-32 md:h-32 z-20 flex items-center justify-center transform -translate-x-1/2" style="left: 50%;">
+                    <div id="s-cart-inner" class="text-7xl md:text-8xl drop-shadow-lg transition-transform">🛒</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- S_LevelUp -->
+        <div id="s-levelup-screen" class="absolute inset-0 bg-orange-500 bg-opacity-95 hidden flex-col items-center justify-center z-[60]">
+            <div id="s-levelup-box" class="bg-white p-8 rounded-[3rem] border-8 border-yellow-400 flex flex-col items-center transform scale-0 transition-transform">
+                <h2 id="s-lu-title" class="text-5xl md:text-6xl font-black text-orange-500 mb-2 animate-bounce">CLEAR!</h2>
+                <div id="s-giant-emoji" class="text-[8rem] hidden animate-pop">🍎</div>
+                <div id="s-full-bag" class="hidden flex-col items-center my-2">
+                    <div class="text-[7rem] animate-bounce">🛍️</div>
+                    <div id="s-collected-items" class="flex flex-wrap justify-center gap-2 text-4xl mt-2 bg-orange-100 p-3 rounded-2xl border-4 border-orange-300"></div>
+                </div>
+                <div id="s-lu-stars" class="flex gap-4 mb-2 text-5xl">🌟🌟🌟</div>
+                <p id="s-lu-msg" class="text-2xl font-bold text-gray-600 text-center mb-6">Good Job!</p>
+                <button id="s-lu-btn" onclick="S_showMenu()" class="hidden btn-3d bg-green-400 text-white text-3xl font-black py-3 px-8 rounded-3xl border-4 border-green-500">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 👩‍🍳 Game 3: Kitchen Spelling 👩‍🍳 -->
+    <!-- ========================================== -->
+    <div id="app-kitchen" class="fixed inset-0 bg-kitchen hidden z-40 flex flex-col relative">
+        
+        <!-- K_Menu -->
+        <div id="k-menu-screen" class="absolute inset-0 flex flex-col items-center justify-center p-4 z-20 bg-kitchen">
+            <button onclick="backToHub()" class="absolute top-4 left-4 btn-3d bg-gray-400 text-white font-bold py-2 px-4 rounded-xl border-b-4 border-gray-500">🏠 Home</button>
+            <div class="text-[7rem] drop-shadow-lg mb-2 animate-boil">👩‍🍳🍲</div>
+            <h1 class="text-5xl md:text-6xl font-black text-rose-500 mb-6 text-center drop-shadow-md">Little Chef's Spelling Pot</h1>
+            <div class="bg-white p-6 rounded-3xl w-full max-w-xl border-4 border-rose-300 shadow-sm mb-6 text-center">
+                <p class="text-lg text-gray-600 font-bold mb-2">🔪 Follow the hints to find the letters!</p>
+                <p class="text-lg text-gray-600 font-bold">🔪 <span class="text-red-500">First letter is UPPERCASE, others are lowercase!</span></p>
+            </div>
+            <button onclick="K_startGame()" class="btn-3d bg-rose-400 text-white text-4xl font-black py-4 px-12 rounded-[2rem] border-4 border-rose-500">Let's Cook</button>
+        </div>
+
+        <!-- K_Game -->
+        <div id="k-game-screen" class="w-full h-full hidden flex-col flex-1 relative max-w-4xl mx-auto">
+            <div class="w-full bg-white border-b-4 border-rose-200 p-2 md:p-4 z-10 flex justify-between items-center">
+                <button onclick="K_showMenu()" class="btn-3d bg-gray-400 text-white font-bold py-2 px-3 rounded-xl border-b-4 border-gray-500">Menu</button>
+                <div id="k-stage" class="font-black text-rose-500 bg-rose-100 px-3 py-1 rounded-full border-2 border-rose-300">Stage 1/3</div>
+                <div id="k-progress" class="flex gap-2 text-2xl bg-gray-100 py-1 px-2 rounded-full border-2 border-gray-200">
+                    <span id="k-p1" class="grayscale opacity-50 transition-all">🍲</span>
+                    <span id="k-p2" class="grayscale opacity-50 transition-all">🍲</span>
+                    <span id="k-p3" class="grayscale opacity-50 transition-all">🍲</span>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center justify-start pt-4 relative">
+                <div class="bg-yellow-50 border-4 border-yellow-300 rounded-3xl p-4 flex flex-col items-center shadow-md w-11/12 max-w-lg mb-2">
+                    <div id="k-target-emoji" class="text-[5rem] drop-shadow-md mb-2">🍎</div>
+                    <div id="k-word-display" class="text-4xl font-black flex justify-center flex-wrap tracking-widest"></div>
+                </div>
+
+                <div class="relative w-full flex justify-center mb-4 mt-auto">
+                    <div id="k-pot" class="text-[8rem] md:text-[9rem] drop-shadow-2xl animate-boil z-10 relative">🍲
+                        <div id="k-food-in-pot" class="absolute inset-0 flex items-center justify-center text-[4rem] opacity-0 transition-opacity z-20 mb-8"></div>
+                    </div>
+                </div>
+
+                <div id="k-options" class="w-full bg-white border-t-4 border-rose-200 p-4 pb-8 flex flex-wrap justify-center gap-3 z-20 rounded-t-3xl shadow-[0_-10px_20px_rgba(0,0,0,0.05)]"></div>
+            </div>
+        </div>
+
+        <!-- K_LevelUp -->
+        <div id="k-levelup-screen" class="absolute inset-0 bg-rose-500 bg-opacity-95 hidden flex-col items-center justify-center z-[60]">
+            <div id="k-levelup-box" class="bg-white p-8 rounded-[3rem] border-8 border-yellow-400 flex flex-col items-center transform scale-0 transition-transform">
+                <h2 id="k-lu-title" class="text-5xl font-black text-rose-500 mb-2 animate-bounce">Dish Complete!</h2>
+                <div id="k-dish" class="text-[8rem] drop-shadow-xl my-2 animate-pop">🍛</div>
+                <p id="k-lu-msg" class="text-2xl font-bold text-gray-600 text-center mb-6">Yummy!</p>
+                <button id="k-lu-next" class="hidden btn-3d bg-orange-400 text-white text-3xl font-black py-3 px-8 rounded-3xl border-4 border-orange-500">Next Dish</button>
+                <button id="k-lu-btn" onclick="K_showMenu()" class="hidden btn-3d bg-green-400 text-white text-3xl font-black py-3 px-8 rounded-3xl border-4 border-green-500">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Celebration Container -->
+    <div id="global-celebration" class="fixed inset-0 pointer-events-none z-[100]"></div>
+
+
+    <!-- ========================================== -->
+    <!-- 🧠 Shared Logic & Audio Engine 🧠 -->
+    <!-- ========================================== -->
+    <script>
+        // --- Shared Data ---
+        const letterGroups = [
+            ['A', 'B', 'C', 'D', 'E'], ['F', 'G', 'H', 'I', 'J'],
+            ['K', 'L', 'M', 'N', 'O'], ['P', 'Q', 'R', 'S', 'T'],
+            ['U', 'V', 'W', 'X', 'Y', 'Z']
+        ];
+        const letterEmojis = {
+            'A':'🍎', 'B':'🍞', 'C':'🥕', 'D':'🍩', 'E':'🥚', 'F':'🐟', 'G':'🍇', 'H':'🍯', 'I':'🍦', 'J':'🧃',
+            'K':'🥝', 'L':'🍋', 'M':'🥭', 'N':'🍜', 'O':'🍊', 'P':'🥔', 'Q':'🥧', 'R':'🍚', 'S':'🍓', 'T':'🍅',
+            'U':'☂️', 'V':'🥦', 'W':'🍉', 'X':'🎁', 'Y':'🍠', 'Z':'🥒'
+        };
+        const letterWords = {
+            'A':'Apple', 'B':'Bread', 'C':'Carrot', 'D':'Donut', 'E':'Egg', 'F':'Fish', 'G':'Grapes', 'H':'Honey', 'I':'Ice cream', 'J':'Juice',
+            'K':'Kiwi', 'L':'Lemon', 'M':'Mango', 'N':'Noodles', 'O':'Orange', 'P':'Potato', 'Q':'Quiche', 'R':'Rice', 'S':'Strawberry', 'T':'Tomato',
+            'U':'Umbrella', 'V':'Vegetables', 'W':'Watermelon', 'X':'Xmas gift', 'Y':'Yam', 'Z':'Zucchini'
+        };
+        const btnColors = [
+            {bg:'bg-red-400', b:'border-red-500'}, {bg:'bg-green-400', b:'border-green-500'}, {bg:'bg-blue-400', b:'border-blue-500'},
+            {bg:'bg-yellow-400', b:'border-yellow-500'}, {bg:'bg-purple-400', b:'border-purple-500'}, {bg:'bg-pink-400', b:'border-pink-500'},
+            {bg:'bg-indigo-400', b:'border-indigo-500'}, {bg:'bg-teal-400', b:'border-teal-500'}
+        ];
+
+        // --- TTS & Audio Engine ---
+        let bestEnglishVoice = null;
+        function loadVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) return;
+            const prefs = ['Google US English', 'Samantha', 'Karen', 'Tessa', 'Microsoft Zira'];
+            for (let p of prefs) {
+                let match = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+                if (match) { bestEnglishVoice = match; break; }
+            }
+            if (!bestEnglishVoice) bestEnglishVoice = voices.find(v => v.lang.startsWith('en'));
+        }
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'en-US';
+                if (bestEnglishVoice) u.voice = bestEnglishVoice;
+                u.rate = 0.85; u.pitch = 1.2;
+                window.speechSynthesis.speak(u);
+            }
+        }
+        function playSnd(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator(), gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                
+                if (type === 'cheer') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(400, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.08, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+                } else if (type === 'boing') {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.05, ctx.currentTime); gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+                    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+                } else if (type === 'plop') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(600, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+                } else if (type === 'levelup') {
+                    const notes = [329.63, 392.00, 523.25, 659.25];
+                    notes.forEach((f, i) => {
+                        const o = ctx.createOscillator(), g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination); o.type = 'sine';
+                        o.frequency.setValueAtTime(f, ctx.currentTime + i * 0.15);
+                        g.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
+                        g.gain.linearRampToValueAtTime(0.1, ctx.currentTime + i * 0.15 + 0.05);
+                        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.15 + 0.5);
+                        o.start(ctx.currentTime + i * 0.15); o.stop(ctx.currentTime + i * 0.15 + 0.5);
+                    });
+                }
+            } catch (e) {}
+        }
+        function globalStars(elementRect) {
+            const container = document.getElementById('global-celebration');
+            const cx = elementRect ? elementRect.left + elementRect.width/2 : window.innerWidth/2;
+            const cy = elementRect ? elementRect.top + elementRect.height/2 : window.innerHeight/2;
+            for (let i=0; i<10; i++) {
+                const s = document.createElement('div'); s.textContent = '🌟'; s.className = 'star-particle';
+                s.style.left = `${cx - 25}px`; s.style.top = `${cy - 25}px`;
+                const a = Math.random() * Math.PI * 2, v = 80 + Math.random() * 80;
+                s.style.setProperty('--tx', `${Math.sin(a)*v}px`);
+                container.appendChild(s); setTimeout(() => s.remove(), 1200);
+            }
+        }
+
+        // --- Hub Logic ---
+        function openApp(id) {
+            speak(''); // Unlock audio
+            document.getElementById('hub-screen').classList.add('hidden');
+            document.getElementById(`app-${id}`).classList.remove('hidden');
+        }
+        function backToHub() {
+            // Clean up game states
+            R_showMenu(); S_showMenu(); K_showMenu();
+            document.querySelectorAll('[id^="app-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('hub-screen').classList.remove('hidden');
+        }
+
+
+        // ==========================================
+        // 🏎️ Game 1: Racing Logic 
+        // ==========================================
+        const R = { grp:[], stg:1, max:3, matchCount:4, fuel:10, suc:0, totSuc:0, isProc:false, sel:[] };
+        
+        function R_showMenu() {
+            document.getElementById('r-game-screen').classList.add('hidden');
+            document.getElementById('r-levelup-screen').classList.add('hidden');
+            document.getElementById('r-menu-screen').classList.remove('hidden');
+        }
+        function R_startGame(grpIdx) {
+            R.grp = letterGroups[grpIdx]; R.stg = 1; R.fuel = 10; R.totSuc = 0;
+            document.getElementById('r-menu-screen').classList.add('hidden');
+            document.getElementById('r-game-screen').classList.remove('hidden');
+            document.getElementById('r-game-screen').classList.add('flex');
+            R_startStage();
+        }
+        function R_startStage() {
+            R.suc = 0; document.getElementById('r-car-sprite').textContent = ['🏎️','🚓','🚕'][Math.min(R.stg-1,2)];
+            R_resetCar(); R_nextRound();
+        }
+        function R_resetCar() {
+            const car = document.getElementById('r-car-container');
+            car.style.transition = 'none'; car.style.left = '8%'; 
+            document.getElementById('r-car-letters').classList.add('hidden');
+            void car.offsetWidth; car.style.transition = 'left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        }
+        function R_nextRound() {
+            R.isProc = false; R.sel = []; document.getElementById('r-car-letters').classList.add('hidden');
+            let pool = [...R.grp].sort(()=>0.5-Math.random()); let tg = pool[0];
+            let deck = [ {l:tg, d:tg, t:'u'}, {l:tg, d:tg.toLowerCase(), t:'l'} ];
+            if(R.stg===1) {
+                let dl=pool[1], dt=Math.random()>0.5?'u':'l'; deck.push({l:dl, d:dt==='u'?dl:dl.toLowerCase(), t:dt});
+            } else {
+                deck.push({l:pool[1], d:pool[1], t:'u'}, {l:pool[2], d:pool[2].toLowerCase(), t:'l'});
+            }
+            deck.sort(()=>0.5-Math.random()); R_render(deck); R_updateUI();
+        }
+        function R_render(deck) {
+            const box = document.getElementById('r-options'); box.innerHTML='';
+            let cols = [...btnColors].sort(()=>0.5-Math.random());
+            deck.forEach((c, i) => {
+                let w = deck.length===4 ? 'w-[40%] md:w-[22%]' : 'w-[28%] md:w-[25%]';
+                let btn = document.createElement('button');
+                btn.className = `btn-3d text-white font-black py-4 md:py-8 rounded-3xl border-b-[6px] text-5xl flex items-center justify-center ${w} ${cols[i%cols.length].bg} ${cols[i%cols.length].b}`;
+                btn.textContent = c.d; btn.onclick = ()=>R_click(btn, c); box.appendChild(btn);
+            });
+        }
+        function R_click(btn, data) {
+            if(R.isProc || R.sel.some(s=>s.btn===btn)) return;
+            R.sel.push({btn, data}); btn.classList.add('r-card-selected', 'border-b-4'); btn.classList.remove('border-b-[6px]');
+            speak(data.l);
+            if(R.sel.length===2) { R.isProc = true; R_process(); }
+        }
+        function R_process() {
+            R.fuel--; R_updateUI();
+            const c1=R.sel[0], c2=R.sel[1], isM=(c1.data.l===c2.data.l && c1.data.t!==c2.data.t);
+            if(isM) {
+                c1.btn.classList.add('animate-pop'); c2.btn.classList.add('animate-pop');
+                R.suc++; R.totSuc++; if(R.totSuc%2===0) R.fuel++;
+                document.getElementById('r-L1').textContent = c1.data.t==='u'?c1.data.d:c2.data.d;
+                document.getElementById('r-L2').textContent = c1.data.t==='l'?c1.data.d:c2.data.d;
+                document.getElementById('r-car-letters').classList.remove('hidden');
+                playSnd('cheer'); speak(`Great! ${c1.data.l}`);
+                const car = document.getElementById('r-car-container');
+                setTimeout(() => {
+                    car.style.left = `${8 + (R.suc/R.matchCount)*72}%`; R_updateUI(); globalStars(car.getBoundingClientRect());
+                    setTimeout(() => R.suc===R.matchCount ? (R.fuel++, R_updateUI(), R_levelUp()) : R_nextRound(), 1000);
+                }, 400);
+            } else {
+                c1.btn.classList.add('animate-shake'); c2.btn.classList.add('animate-shake'); playSnd('boing');
+                const sprite = document.getElementById('r-car-sprite'); sprite.classList.add('animate-car-spin');
+                setTimeout(() => {
+                    sprite.classList.remove('animate-car-spin');
+                    c1.btn.className = c1.btn.className.replace(/r-card-selected|border-b-4|animate-shake/g,'') + ' border-b-[6px]';
+                    c2.btn.className = c2.btn.className.replace(/r-card-selected|border-b-4|animate-shake/g,'') + ' border-b-[6px]';
+                    R.sel=[]; R.fuel<=0 ? R_over() : R.isProc=false;
+                }, 800);
+            }
+        }
+        function R_updateUI() {
+            document.getElementById('r-stage-display').textContent = `Stage ${R.stg}/${R.max}`;
+            const bar = document.getElementById('r-fuel-bar'); bar.innerHTML='';
+            for(let i=0; i<10; i++) {
+                let b=document.createElement('div');
+                b.className = `w-3 h-5 md:w-5 md:h-6 border-[2px] border-black rounded-sm ${i<Math.min(R.fuel,10) ? 'bg-red-500 shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]' : 'bg-gray-300 opacity-50'}`;
+                bar.appendChild(b);
+            }
+        }
+        function R_over() {
+            const b = document.getElementById('r-levelup-box');
+            document.getElementById('r-levelup-screen').classList.remove('hidden'); document.getElementById('r-levelup-screen').classList.add('flex');
+            setTimeout(()=>b.classList.replace('scale-0','scale-100'), 50);
+            document.getElementById('r-lu-title').textContent = "OUT OF FUEL!"; document.getElementById('r-lu-title').className="text-5xl font-black text-gray-500 mb-4";
+            document.getElementById('r-lu-stars').textContent = "⛽🚫"; document.getElementById('r-lu-msg').textContent = "Try again!";
+            document.getElementById('r-lu-btn').classList.remove('hidden'); speak("Oh no, out of fuel!"); playSnd('boing');
+        }
+        function R_levelUp() {
+            const b = document.getElementById('r-levelup-box');
+            document.getElementById('r-levelup-screen').classList.remove('hidden'); document.getElementById('r-levelup-screen').classList.add('flex');
+            setTimeout(()=>b.classList.replace('scale-0','scale-100'), 50);
+            if(R.stg >= R.max) {
+                document.getElementById('r-lu-title').textContent = "CHAMPION!"; document.getElementById('r-lu-title').className="text-5xl font-black text-pink-500 mb-4 animate-bounce";
+                document.getElementById('r-lu-stars').textContent = "🏆🏁🏆"; document.getElementById('r-lu-msg').textContent = "You reached the finish line!";
+                document.getElementById('r-lu-btn').classList.remove('hidden'); speak("Champion! Game clear!"); playSnd('levelup');
+            } else {
+                document.getElementById('r-lu-title').textContent = `STAGE ${R.stg} CLEAR!`; document.getElementById('r-lu-title').className="text-5xl font-black text-orange-500 mb-4 animate-bounce";
+                document.getElementById('r-lu-stars').textContent = "🌟🌟🌟"; document.getElementById('r-lu-msg').textContent = "Finish! +1 ⛽";
+                speak("Level up!"); playSnd('levelup'); R.stg++;
+                setTimeout(() => { b.classList.replace('scale-100','scale-0'); setTimeout(()=>{ document.getElementById('r-levelup-screen').classList.add('hidden'); R_startStage(); },500); }, 3000);
+            }
+        }
+
+
+        // ==========================================
+        // 🛒 Game 2: Supermarket Logic
+        // ==========================================
+        const S = { grp:[], tgts:[], stg:1, max:5, tLetter:'', count:0, loopId:null, spwnId:null, items:[], isOver:true, isDrag:false };
+        
+        const sArea = document.getElementById('s-play-area'), sCart = document.getElementById('s-cart');
+        function sUpdate(clientX) {
+            const r = sArea.getBoundingClientRect(), w = sCart.offsetWidth;
+            let nx = clientX - r.left; nx = Math.max(w/2, Math.min(nx, r.width - w/2));
+            sCart.style.left = `${nx}px`;
+        }
+        sArea.addEventListener('touchstart', (e)=>{ S.isDrag=true; sUpdate(e.touches[0].clientX); }, {passive:false});
+        sArea.addEventListener('touchmove', (e)=>{ if(S.isDrag){ e.preventDefault(); sUpdate(e.touches[0].clientX); }}, {passive:false});
+        sArea.addEventListener('touchend', ()=>{ S.isDrag=false; });
+        sArea.addEventListener('mousedown', (e)=>{ S.isDrag=true; sUpdate(e.clientX); });
+        sArea.addEventListener('mousemove', (e)=>{ if(S.isDrag) sUpdate(e.clientX); });
+        window.addEventListener('mouseup', ()=>{ S.isDrag=false; });
+
+        function S_showMenu() {
+            S_cleanup(); document.getElementById('s-game-screen').classList.add('hidden');
+            document.getElementById('s-levelup-screen').classList.add('hidden'); document.getElementById('s-menu-screen').classList.remove('hidden');
+        }
+        function S_cleanup() {
+            S.isOver=true; cancelAnimationFrame(S.loopId); clearInterval(S.spwnId);
+            S.items.forEach(i => i.el.remove()); S.items=[]; sCart.style.left='50%';
+        }
+        function S_startGame(idx) {
+            S.grp = letterGroups[idx]; S.tgts = [...S.grp].sort(()=>0.5-Math.random()); S.stg=1;
+            document.getElementById('s-menu-screen').classList.add('hidden');
+            document.getElementById('s-game-screen').classList.remove('hidden'); document.getElementById('s-game-screen').classList.add('flex');
+            S_startStage();
+        }
+        function S_startStage() {
+            S_cleanup(); S.isOver=false; S.count=0; S.tLetter = S.tgts[S.stg-1];
+            document.getElementById('s-stage-display').textContent = `Stage ${S.stg}/${S.max}`;
+            document.getElementById('s-target-upper').textContent = S.tLetter;
+            document.getElementById('s-target-lower').textContent = S.tLetter.toLowerCase();
+            document.getElementById('s-target-emoji').textContent = letterEmojis[S.tLetter];
+            
+            const prog = document.getElementById('s-progress'); prog.innerHTML='';
+            for(let i=0; i<5; i++) {
+                let slot = document.createElement('div'); slot.id=`s-slot-${i}`;
+                slot.className = 'w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-dashed border-gray-400 bg-white flex items-center justify-center font-black text-green-600';
+                prog.appendChild(slot);
+            }
+            document.getElementById('s-levelup-screen').classList.add('hidden'); document.getElementById('s-levelup-box').classList.replace('scale-100','scale-0');
+            speak(`${S.tLetter} for ${letterWords[S.tLetter]}`);
+            S.loopId = requestAnimationFrame(S_loop); S.spwnId = setInterval(S_spawn, 1200);
+        }
+        function S_spawn() {
+            if(S.isOver) return;
+            let d = Math.random()>0.5 ? {l:S.tLetter, d:Math.random()>0.5?S.tLetter:S.tLetter.toLowerCase(), tg:true} 
+                                      : {l:S.grp.find(x=>x!==S.tLetter), d:Math.random()>0.5?S.grp.find(x=>x!==S.tLetter):S.grp.find(x=>x!==S.tLetter).toLowerCase(), tg:false};
+            let el = document.createElement('div');
+            let c = btnColors[Math.floor(Math.random()*btnColors.length)];
+            el.className = `falling-item w-14 h-14 md:w-16 md:h-16 rounded-xl border-b-4 text-white font-black text-3xl shadow-md ${c.bg} ${c.b}`;
+            el.textContent = d.d; 
+            let sx = 20 + Math.random()*(sArea.clientWidth-80);
+            S.items.push({el, x:sx, y:-80, spd:3+Math.random()*2, data:d, proc:false});
+            sArea.appendChild(el);
+        }
+        function S_loop() {
+            if(S.isOver) return;
+            const cR = sCart.getBoundingClientRect(), aR = sArea.getBoundingClientRect();
+            for(let i=S.items.length-1; i>=0; i--) {
+                let it = S.items[i]; if(it.proc) continue;
+                it.y += it.spd; it.el.style.transform = `translate(${it.x}px, ${it.y}px)`;
+                let iR = it.el.getBoundingClientRect();
+                if(iR.bottom>cR.top+10 && iR.top<cR.bottom && iR.right>cR.left+10 && iR.left<cR.right-10) S_catch(it, i);
+                else if(iR.top>aR.bottom) { it.el.remove(); S.items.splice(i,1); }
+            }
+            S.loopId = requestAnimationFrame(S_loop);
+        }
+        function S_catch(it, idx) {
+            it.proc=true;
+            if(it.data.tg) {
+                if(S.count<5) {
+                    let slot = document.getElementById(`s-slot-${S.count}`); slot.textContent = it.data.d;
+                    slot.className = 'w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-green-500 bg-green-100 flex items-center justify-center font-black text-green-600 animate-check';
+                }
+                S.count++; it.el.classList.add('animate-catch'); playSnd('plop'); speak('Good!');
+                if(S.count>=5) setTimeout(S_levelUp, 500);
+            } else {
+                playSnd('boing'); it.el.classList.add('animate-bounce-away');
+                const cI = document.getElementById('s-cart-inner'); cI.classList.remove('animate-shake'); void cI.offsetWidth; cI.classList.add('animate-shake');
+            }
+            setTimeout(()=>{ if(it.el.parentNode) it.el.remove(); },500); S.items.splice(idx,1);
+        }
+        function S_levelUp() {
+            S_cleanup(); globalStars(sCart.getBoundingClientRect());
+            const scr = document.getElementById('s-levelup-screen'), bx = document.getElementById('s-levelup-box');
+            scr.classList.remove('hidden'); scr.classList.add('flex'); setTimeout(()=>bx.classList.replace('scale-0','scale-100'), 50);
+            
+            document.getElementById('s-giant-emoji').classList.add('hidden'); document.getElementById('s-full-bag').classList.add('hidden');
+            let w = letterWords[S.tLetter], txt = `${S.tLetter} for ${w}! Got it!`;
+
+            if(S.stg>=S.max) {
+                document.getElementById('s-full-bag').classList.remove('hidden'); document.getElementById('s-full-bag').classList.add('flex');
+                document.getElementById('s-collected-items').innerHTML = S.tgts.map(l=>`<span>${letterEmojis[l]}</span>`).join('');
+                document.getElementById('s-lu-title').textContent = "GAME CLEAR!";
+                document.getElementById('s-lu-msg').textContent = "Your shopping bag is full!";
+                document.getElementById('s-lu-btn').classList.remove('hidden'); playSnd('levelup'); speak(`${txt} Champion!`);
+            } else {
+                let gm = document.getElementById('s-giant-emoji'); gm.textContent = letterEmojis[S.tLetter];
+                gm.classList.remove('hidden', 'animate-pop'); void gm.offsetWidth; gm.classList.add('animate-pop');
+                document.getElementById('s-lu-title').textContent = `STAGE ${S.stg} CLEAR!`;
+                document.getElementById('s-lu-msg').textContent = `You got a ${w}!`;
+                playSnd('levelup'); speak(txt);
+                setTimeout(() => { bx.classList.replace('scale-100','scale-0'); setTimeout(()=>{ S.stg++; S_startStage(); },500); }, 3000);
+            }
+        }
+
+
+        // ==========================================
+        // 👩‍🍳 Game 3: Kitchen Logic 
+        // ==========================================
+        const foodsData = [
+            {w:'Apple',e:'🍎'}, {w:'Bread',e:'🍞'}, {w:'Carrot',e:'🥕'}, {w:'Donut',e:'🍩'}, {w:'Egg',e:'🥚'}, {w:'Fish',e:'🐟'}, {w:'Grape',e:'🍇'},
+            {w:'Honey',e:'🍯'}, {w:'Juice',e:'🧃'}, {w:'Lemon',e:'🍋'}, {w:'Mango',e:'🥭'}, {w:'Onion',e:'🧅'}, {w:'Peach',e:'🍑'}, {w:'Steak',e:'🥩'}
+        ];
+        const K = { stg:1, max:3, tgts:[], idx:0, w:'', spl:'', isProc:false };
+
+        function K_showMenu() {
+            document.getElementById('k-game-screen').classList.add('hidden'); document.getElementById('k-levelup-screen').classList.add('hidden');
+            document.getElementById('k-menu-screen').classList.remove('hidden');
+        }
+        function K_startGame() {
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); K.stg=1;
+            document.getElementById('k-menu-screen').classList.add('hidden');
+            document.getElementById('k-game-screen').classList.remove('hidden'); document.getElementById('k-game-screen').classList.add('flex');
+            K_startStage();
+        }
+        function K_startStage() {
+            K.isProc=false; K.idx=0;
+            let shuf = [...foodsData].sort(()=>0.5-Math.random()); K.tgts = shuf.slice(0,3);
+            document.getElementById('k-stage').textContent = `Stage ${K.stg}/${K.max}`;
+            for(let i=1;i<=3;i++) { let el = document.getElementById(`k-p${i}`); el.classList.add('grayscale','opacity-50'); el.textContent='🍲'; }
+            document.getElementById('k-levelup-screen').classList.add('hidden'); document.getElementById('k-levelup-box').classList.replace('scale-100','scale-0');
+            K_loadFood();
+        }
+        function K_loadFood() {
+            K.spl=""; K.w = K.tgts[K.idx].w;
+            let em = document.getElementById('k-target-emoji'); em.textContent = K.tgts[K.idx].e;
+            em.classList.remove('animate-pop'); void em.offsetWidth; em.classList.add('animate-pop');
+            setTimeout(()=>speak(`Let's cook ${K.w}`), 300);
+            K_updateWd(); K_genOpts();
+        }
+        function K_updateWd() {
+            const wd = document.getElementById('k-word-display'); wd.innerHTML='';
+            for(let i=0; i<K.w.length; i++) {
+                let s = document.createElement('span');
+                if(i<K.spl.length) { s.className='word-slot filled animate-pop text-orange-600'; s.textContent=K.spl[i]; }
+                else if(i===K.spl.length) { s.className='word-slot text-gray-400 animate-pulse font-bold'; s.textContent=K.w[i]; }
+                else { s.className='word-slot text-gray-200'; s.textContent=K.w[i]; }
+                wd.appendChild(s);
+            }
+        }
+        function K_genOpts() {
+            const box = document.getElementById('k-options'); box.innerHTML='';
+            let nL = K.w[K.spl.length], isU = K.spl.length===0;
+            let cnt = K.stg===3?8:6, pool=[nL], src=isU?"ABCDEFGHIJKLMNOPQRSTUVWXYZ":"abcdefghijklmnopqrstuvwxyz";
+            while(pool.length<cnt) { let r=src[Math.floor(Math.random()*src.length)]; if(!pool.includes(r)) pool.push(r); }
+            pool.sort(()=>0.5-Math.random());
+            let cols = [...btnColors, {bg:'bg-indigo-400',b:'border-indigo-500'}].sort(()=>0.5-Math.random());
+            pool.forEach((l,i) => {
+                let w = cnt===8 ? 'w-[22%] md:w-[18%]' : 'w-[28%] md:w-[22%]';
+                let btn = document.createElement('button');
+                btn.className = `btn-3d text-white font-black py-4 rounded-2xl border-b-[6px] text-5xl flex items-center justify-center ${w} ${cols[i%cols.length].bg} ${cols[i%cols.length].b}`;
+                btn.textContent = l; btn.onclick=(e)=>K_click(l,btn,e); box.appendChild(btn);
+            });
+        }
+        function K_click(l, btn, e) {
+            if(K.isProc) return;
+            if(l===K.w[K.spl.length]) {
+                K.isProc=true; playSnd('plop'); speak(l);
+                let fly = document.createElement('div'); fly.textContent=l; fly.className=btn.className+" animate-drop";
+                let r=btn.getBoundingClientRect(); fly.style.left=`${r.left}px`; fly.style.top=`${r.top}px`; fly.style.width=`${r.width}px`; fly.style.height=`${r.height}px`;
+                document.body.appendChild(fly); btn.disabled=true; K.spl+=l;
+                setTimeout(()=>{ fly.remove(); K_updateWd(); K.spl.length===K.w.length ? K_complete() : (K.isProc=false, K_genOpts()); }, 800);
+            } else { playSnd('boing'); btn.classList.remove('animate-shake'); void btn.offsetWidth; btn.classList.add('animate-shake'); }
+        }
+        function K_complete() {
+            playSnd('cheer'); speak(`Got it! ${K.w}`);
+            let fInP = document.getElementById('k-food-in-pot'); fInP.textContent = K.tgts[K.idx].e;
+            fInP.classList.remove('opacity-0','animate-pop'); fInP.classList.add('animate-drop');
+            globalStars(document.getElementById('k-pot').getBoundingClientRect());
+            let pIcon = document.getElementById(`k-p${K.idx+1}`); pIcon.classList.remove('grayscale','opacity-50'); pIcon.textContent=K.tgts[K.idx].e; pIcon.classList.add('animate-pop');
+            setTimeout(()=>{ fInP.classList.add('opacity-0'); fInP.classList.remove('animate-drop'); K.idx++; K.idx>=3 ? K_levelUp() : (K.isProc=false, K_loadFood()); }, 1500);
+        }
+        function K_levelUp() {
+            playSnd('levelup'); document.getElementById('k-levelup-screen').classList.remove('hidden'); document.getElementById('k-levelup-screen').classList.add('flex');
+            document.getElementById('k-lu-next').classList.add('hidden'); document.getElementById('k-lu-btn').classList.add('hidden');
+            let ds = ['🍛','🍝','🍰'], ms = ['Yummy Curry Rice!','Delicious Spaghetti!','Sweet Big Cake!'];
+            document.getElementById('k-dish').textContent = ds[K.stg-1]; document.getElementById('k-lu-msg').textContent = ms[K.stg-1];
+            setTimeout(()=>document.getElementById('k-levelup-box').classList.replace('scale-0','scale-100'), 100);
+            
+            if(K.stg>=K.max) {
+                document.getElementById('k-lu-title').textContent = "Dinner Time!"; document.getElementById('k-dish').innerHTML = `🍽️<br><span class="text-5xl">🍛🍝🍰</span>`;
+                document.getElementById('k-lu-msg').textContent = "All dishes are ready! Let's eat!"; document.getElementById('k-lu-btn').classList.remove('hidden');
+                setTimeout(()=>speak("Dinner is ready! Master chef!"), 500);
+            } else {
+                document.getElementById('k-lu-title').textContent = `Dish ${K.stg} Complete!`;
+                let nb = document.getElementById('k-lu-next'); nb.classList.remove('hidden');
+                nb.onclick = () => { K.stg++; K_startStage(); };
+                setTimeout(()=>speak("Yummy!"), 500);
+            }
+        }
+    </script>
+</body>
+</html>
